@@ -22,6 +22,7 @@ string read_file(const char* filename) {
         }
         code += c;
     }
+    code += " ";
     infile.close();
     return code;
 }
@@ -29,247 +30,74 @@ string read_file(const char* filename) {
 class Lexer{
 public:
     vector<pair<string,int>> word_analysis(string code, int& error_flag) {
-        int pointer_code = 0;
         vector<pair<string,int>> tokens;
-        int category_code = 0;
+        int pointer_code = 0;
+        int state = 1;
+        int state_before = 0;
+        string temp;
         while(pointer_code < code.size()) {
-            if(isDigit(code[pointer_code])) {
-                string temp;
-                int flag_float = 0;
-                int flag_e = 0;
-                while(isDigit(code[pointer_code])) {
-                    temp += code[pointer_code];
-                    pointer_code++;
-                    if(pointer_code >= code.size()) {
-                        break;
-                    }
-                    if(code[pointer_code] == '.') {
-                        if(flag_float) {
-                            error_flag = 1;
-                            break;
-                        }
-                        flag_float = 1;
-                        temp += code[pointer_code];
-                        pointer_code++;
-                    }
-                    else if(code[pointer_code] == 'e') {
-                        if(flag_e) {
-                            error_flag = 1;
-                            break;
-                        }
-                        flag_e = 1;
-                        temp += code[pointer_code];
-                        pointer_code++;
-                        if(code[pointer_code] == '-') {
-                            temp += code[pointer_code];
-                            pointer_code++;
-                        }
-                    }
+            state_before = state;
+            state_change(state, code[pointer_code], error_flag);
+            if(state!=0 && state!=1 && state != 16 && state != 17 && state != 18) {
+                if(state == 8 || state == 9) {
+                    if(code[pointer_code] == '\\') pointer_code ++;
                 }
-                vector<string>::iterator iter;
-                iter = find(CT.begin(),CT.end(),temp);
-                if(iter == CT.end()) CT.push_back(temp);
-                tokens.push_back(make_pair(temp,3));
+                temp += code[pointer_code];
             }
-            else if(isLetter(code[pointer_code])) {
-                string temp;
-                while(isLetter(code[pointer_code]) || isDigit(code[pointer_code])) {
-                    temp += code[pointer_code];
-                    pointer_code++;
-                    if(pointer_code >= code.size()) {
-                        break;
+            if(state == 0) {
+                if(state_before == 2) {
+                    int category_code = 0;
+                    if(kt.count(temp)) {
+                        category_code = kt[temp];
                     }
+                    else{
+                        vector<string>::iterator iter;
+                        iter = find(iT.begin(),iT.end(),temp);
+                        if(iter == iT.end()) iT.push_back(temp);
+                    }
+                    tokens.push_back(make_pair(temp,category_code));
                 }
-                category_code = 0;
-                if(kt.count(temp)) {
-                    category_code = kt[temp];
+                else if(state_before == 3){
+                    vector<string>::iterator iter;
+                    iter = find(CT.begin(),CT.end(),temp);
+                    if(iter == CT.end()) CT.push_back(temp);
+                    tokens.push_back(make_pair(temp,3));
+                }
+                else if(state_before == 16) {
+                    tokens.push_back(make_pair("//",pt["//"]));
+                }
+                else if(state_before == 25) {
+                    tokens.push_back(make_pair("/*",pt["/*"]));
+                    tokens.push_back(make_pair("*/",pt["*/"]));
+                }
+                else if(state_before == 24){
+                    cT.push_back(temp);
+                    tokens.push_back(make_pair(temp,1));
+                }
+                else if(state_before == 23) {
+                    sT.push_back(temp);
+                    tokens.push_back(make_pair(temp,2));
                 }
                 else{
-                    vector<string>::iterator iter;
-                    iter = find(iT.begin(),iT.end(),temp);
-                    if(iter == iT.end()) iT.push_back(temp);
+                    tokens.push_back(make_pair(temp,pt[temp]));
                 }
-                tokens.push_back(make_pair(temp,category_code));
-            }
-            else {
-                string temp;
-                char ch = code[pointer_code];
-                switch(ch){
-                    case '(':
-                        tokens.push_back(make_pair("(",pt["("])); break;
-                    case ')':
-                        tokens.push_back(make_pair(")",pt[")"])); break;
-                    case '{':
-                        tokens.push_back(make_pair("{",pt["{"])); break;
-                    case '}':
-                        tokens.push_back(make_pair("}",pt["}"])); break;
-                    case '[':
-                        tokens.push_back(make_pair("[",pt["["])); break;
-                    case ']':
-                        tokens.push_back(make_pair("]",pt["]"])); break;
-                    case ',':
-                        tokens.push_back(make_pair(",",pt[","])); break;
-                    case ';':
-                        tokens.push_back(make_pair(";",pt[";"])); break;
-                    case '+':
-                        if(code[pointer_code + 1] == '=') {
-                            tokens.push_back(make_pair("+=", pt["+="]));
-                            pointer_code ++;
-                        }
-                        else if(code[pointer_code + 1] == '+') {
-                            tokens.push_back(make_pair("++", pt["++"]));
-                            pointer_code ++;
-                        }
-                        else {
-                            tokens.push_back(make_pair("+",pt["+"]));
-                        }
-                        break;
-                    case '-':
-                        if(code[pointer_code + 1] == '=') {
-                            tokens.push_back(make_pair("-=", pt["-="]));
-                            pointer_code ++;
-                        }
-                        else if(code[pointer_code + 1] == '-') {
-                            tokens.push_back(make_pair("--", pt["--"]));
-                            pointer_code ++;
-                        }
-                        else {
-                            tokens.push_back(make_pair("-",pt["-"]));
-                        }
-                        break;
-                    case '*':
-                        if(code[pointer_code + 1] == '=') {
-                            tokens.push_back(make_pair("*=", pt["*="]));
-                            pointer_code ++;
-                        }
-                        else if(code[pointer_code + 1] == '/') {
-                            tokens.push_back(make_pair("*/", pt["*/"]));
-                            pointer_code ++;
-                        }
-                        else tokens.push_back(make_pair("*",pt["*"]));
-                        break;
-                    case '/':
-                        if(code[pointer_code + 1] == '=') {
-                            tokens.push_back(make_pair("/=", pt["/="]));
-                            pointer_code ++;
-                        }
-                        else if(code[pointer_code+1] == '/') {
-                            tokens.push_back(make_pair("//", pt["//"]));
-                            pointer_code ++;
-                        }
-                        else if(code[pointer_code + 1] == '*'){
-                            tokens.push_back(make_pair("//", pt["//"]));
-                            pointer_code ++;
-                        }
-                        else tokens.push_back(make_pair("/",pt["/"]));
-                        break;
-                    case '%':
-                        tokens.push_back(make_pair("%", pt["%"]));
-                        break;
-                    case '&':
-                        if(code[pointer_code + 1] == '&') {
-                            tokens.push_back(make_pair("&&", pt["&&"]));
-                            pointer_code ++;
-                        }
-                        else{
-                            tokens.push_back(make_pair("&", pt["&"]));
-                        }
-                        break;
-                    case '|':
-                        if(code[pointer_code + 1] == '|') {
-                            tokens.push_back(make_pair("||", pt["||"]));
-                            pointer_code ++;
-                        }
-                        else{
-                            tokens.push_back(make_pair("|", pt["|"]));
-                        }
-                        break;
-                    case '>':
-                        if(code[pointer_code + 1] == '=') {
-                            tokens.push_back(make_pair(">=", pt[">="]));
-                            pointer_code ++;
-                        }
-                        else tokens.push_back(make_pair(">", pt[">"]));
-                        break;
-                    case '<':
-                        if(code[pointer_code + 1] == '=') {
-                            tokens.push_back(make_pair("<=", pt["<="]));
-                            pointer_code ++;
-                        }
-                        else tokens.push_back(make_pair("<", pt["<"]));
-                        break;
-                    case '=':
-                        if(code[pointer_code + 1] == '=') {
-                            tokens.push_back(make_pair("==", pt["=="]));
-                            pointer_code ++;
-                        }
-                        else tokens.push_back(make_pair("=", pt["="]));
-                        break;
-                    case '"':
-                        temp.clear();
-                        temp += "\"";
-                        pointer_code ++;
-                        while(code[pointer_code] != '"') {
-                            if(code[pointer_code] == '\\') {
-                                temp += code[pointer_code+1];
-                                pointer_code += 2;
-                            }
-                            else{
-                                temp += code[pointer_code];
-                                pointer_code++;
-                            }
-                            if(pointer_code >= code.size()) {
-                                error_flag = 1;
-                                break;
-                            }
-                        }
-                        temp += "\"";
-                        if(!error_flag) {
-                            sT.push_back(temp);
-                            tokens.push_back(make_pair(temp,2));
-                        }
-                        break;
-                    case '\'':
-                        temp.clear();
-                        temp += "'";
-                        pointer_code++;
-                        if(code[pointer_code] == '\\') {
-                            if(pointer_code + 2 >= code.size()) {
-                                error_flag = 1;
-                                break;
-                            }
-                            pointer_code++;
-                            temp += code[pointer_code];
-                            temp += "'";
-                            pointer_code++;
-                        }
-                        else{
-                            if(pointer_code + 1 >= code.size()) {
-                                error_flag = 1;
-                                break;
-                            }
-                            temp += code[pointer_code];
-                            temp += "'";
-                            pointer_code++;
-                        }
-                        if(!error_flag) {
-                            cT.push_back(temp);
-                            tokens.push_back(make_pair(temp,1));
-                        }
-                        break;
-                    default:
-                        break;
-                }
-                pointer_code ++;
+                state = 1;
+                temp.clear();
+                pointer_code --;
             }
             if(error_flag) {
                 tokens.clear();
                 break;
             }
-            //pointer_code++;
+            pointer_code ++;
+        }
+        if(state != 1) {
+            error_flag = 1;
+            tokens.clear();
         }
         return tokens;
     }
+
     void show_iT() {
         for(int i = 0; i < iT.size(); i++) {
             cout << iT[i] << endl;
@@ -279,6 +107,122 @@ private:
     bool isDigit(char c) { return c >= '0' && c <= '9'; }
     
     bool isLetter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c=='_'; }
+    
+    void state_change(int& state, char ch, int& error_flag) {
+        switch(state) {
+            case 1:
+                if(isLetter(ch)) state = 2;
+                if(isDigit(ch)) state = 3;
+                if(ch == '"') state = 8;
+                if(ch == '\'') state = 9;
+                if(ch == '>') state = 11;
+                if(ch == '<') state = 12;
+                if(ch == '=') state = 13;
+                if(ch == '*') state = 14;
+                if(ch == '/') state = 15;
+                if(ch == '+') state = 19;
+                if(ch == '-') state = 20;
+                if(ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == '[' || ch == ']') state = 10;
+                if(ch == '%' || ch == '^' || ch == ',' || ch == ';') state = 10;
+                if(ch == '&') state = 21;
+                if(ch == '|') state = 22;
+                break;
+            case 2:
+                if(isLetter(ch) || isDigit(ch)) state = 2;
+                else state = 0;
+                break;
+            case 3:
+                if(isDigit(ch)) state = 3;
+                if(ch == '.') state = 4;
+                if(ch == 'e') state = 6;
+                else state = 0;
+                break;
+            case 4:
+                if(isDigit(ch)) state = 5;
+                else state = 99;
+                break;
+            case 5:
+                if(isDigit(ch)) state = 5;
+                else state = 0;
+                break;
+            case 6:
+                if(isDigit(ch)) state = 6;
+                else if(ch == '-') state = 7;
+                else state = 99;
+                break;
+            case 7:
+                if(isDigit(ch)) state = 7;
+                else state = 0;
+                break;
+            case 8:
+                if(ch == '"') state = 23; break;
+            case 9:
+                if(ch == '\'') state = 24; break;
+            case 10:
+                state = 0; break;
+            case 11:
+                if(ch == '=') state = 10;
+                else if(ch == '>') state = 10;
+                else state = 0;
+                break;
+            case 12:
+                if(ch == '=') state = 10;
+                else if(ch == '<') state = 10;
+                else state = 0;
+                break;
+            case 13:
+                if(ch == '=') state = 10;
+                else state = 0;
+                break;
+            case 14:
+                if(ch == '=') state = 10;
+                else state = 0;
+                break;
+            case 15:
+                if(ch == '=') state = 10;
+                else if (ch == '/') state = 16;
+                else if (ch == '*') state = 17;
+                else state = 0;
+                break;
+            case 16:
+                if(ch == '\n') state = 0; break;
+            case 17:
+                if(ch == '*') state = 18; break;
+            case 18:
+                if(ch == '/') state = 25;
+                else state = 17;
+                break;
+            case 19:
+                if(ch == '=') state = 10;
+                else if(ch == '+') state = 10;
+                else state = 0;
+                break;
+            case 20:
+                if(ch == '=') state = 10;
+                else if(ch == '-') state = 10;
+                else state = 0;
+                break;
+            case 21:
+                if(ch == '&') state = 10;
+                else state = 0;
+                break;
+            case 22:
+                if(ch == '|') state = 10;
+                else state = 0;
+                break;
+            case 23:
+                state = 0; break;
+            case 24:
+                state = 0; break;
+            case 25:
+                state = 0; break;
+            case 99:
+                error_flag = 1;
+                break;
+            default:
+                break;
+        }
+    }
 
     map<string, int> kt = {
             {"auto",4},{"void",5},{"char",6},{"const",7},{"double",8},{"float",9},
@@ -289,7 +233,7 @@ private:
             {"(",30},{")",31},{"[",32},{"]",33},{"{",34},{"}",35},{"+",36},{"++",37},{"+=",38},{"-",39},
             {"--",40},{"-=",41},{"*",42},{"*=",43},{"/",44},{"/=",45},{"%",46},{"<",47},{">",48},{"=",49},
             {"<=",50},{"==",51},{">=",52},{"&",53},{"|",54},{"^",55},{"&&",56},{"||",57},{"//",58},{"/*",59},
-            {"*/",60},{",",61},{";",62}};
+            {"*/",60},{",",61},{";",62},{"<<",63},{">>",64}};
 
     vector<string> sT;
     vector<string> cT;

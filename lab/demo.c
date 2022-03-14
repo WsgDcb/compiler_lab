@@ -1,4 +1,6 @@
 int main() {
+    //sdsadasd
+    a += 1;
     int a = 1, d = 2, c;
     if(a <= d) {
         c = a;
@@ -9,3 +11,4 @@ int main() {
     char x, y = 'a';
     c = a + d;
 }
+/*sdada*/
