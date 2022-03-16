@@ -1,7 +1,7 @@
 int main() {
     //sdsadasd
     a += 1;
-    int a = 1, d = 2, c;
+    int a = 1, d = 2.4e-19, c;
     if(a <= d) {
         c = a;
         a = d;

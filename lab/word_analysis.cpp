@@ -29,6 +29,7 @@ string read_file(const char* filename) {
 
 class Lexer{
 public:
+    //进行词法分析的函数,返回tokens
     vector<pair<string,int>> word_analysis(string code, int& error_flag) {
         vector<pair<string,int>> tokens;
         int pointer_code = 0;
@@ -39,12 +40,14 @@ public:
             state_before = state;
             state_change(state, code[pointer_code], error_flag);
             if(state!=0 && state!=1 && state != 16 && state != 17 && state != 18) {
+                //非终止态非注释情况下对字符进行记录
                 if(state == 8 || state == 9) {
                     if(code[pointer_code] == '\\') pointer_code ++;
                 }
                 temp += code[pointer_code];
             }
             if(state == 0) {
+                //终止态时进行tokens的储存
                 if(state_before == 2) {
                     int category_code = 0;
                     if(kt.count(temp)) {
@@ -57,7 +60,7 @@ public:
                     }
                     tokens.push_back(make_pair(temp,category_code));
                 }
-                else if(state_before == 3){
+                else if(state_before == 3 || state_before == 5 || state_before == 7) {
                     vector<string>::iterator iter;
                     iter = find(CT.begin(),CT.end(),temp);
                     if(iter == CT.end()) CT.push_back(temp);
@@ -99,33 +102,56 @@ public:
     }
 
     void show_iT() {
+        cout << "------" <<"iT" << "------" << endl;
         for(int i = 0; i < iT.size(); i++) {
             cout << iT[i] << endl;
         }
     }
+
+    void show_cT() {
+        cout << "------" <<"cT" << "------" << endl;
+        for(int i = 0; i < cT.size(); i++) {
+            cout << cT[i] << endl;
+        }
+    }
+
+    void show_CT() {
+        cout << "------" <<"CT" << "------" << endl;
+        for(int i = 0; i < CT.size(); i++) {
+            cout << CT[i] << endl;
+        }
+    }
+
+    void show_sT() {
+        cout << "------" <<"sT" << "------" << endl;
+        for(int i = 0; i < sT.size(); i++) {
+            cout << sT[i] << endl;
+        }
+    }
+    
 private:
     bool isDigit(char c) { return c >= '0' && c <= '9'; }
     
     bool isLetter(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c=='_'; }
-    
+    //自动机状态控制转换函数
     void state_change(int& state, char ch, int& error_flag) {
         switch(state) {
             case 1:
                 if(isLetter(ch)) state = 2;
-                if(isDigit(ch)) state = 3;
-                if(ch == '"') state = 8;
-                if(ch == '\'') state = 9;
-                if(ch == '>') state = 11;
-                if(ch == '<') state = 12;
-                if(ch == '=') state = 13;
-                if(ch == '*') state = 14;
-                if(ch == '/') state = 15;
-                if(ch == '+') state = 19;
-                if(ch == '-') state = 20;
-                if(ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == '[' || ch == ']') state = 10;
-                if(ch == '%' || ch == '^' || ch == ',' || ch == ';') state = 10;
-                if(ch == '&') state = 21;
-                if(ch == '|') state = 22;
+                else if(isDigit(ch)) state = 3;
+                else if(ch == '"') state = 8;
+                else if(ch == '\'') state = 9;
+                else if(ch == '>') state = 11;
+                else if(ch == '<') state = 12;
+                else if(ch == '=') state = 13;
+                else if(ch == '*') state = 14;
+                else if(ch == '/') state = 15;
+                else if(ch == '+') state = 19;
+                else if(ch == '-') state = 20;
+                else if(ch == '(' || ch == ')' || ch == '{' || ch == '}' || ch == '[' || ch == ']') state = 10;
+                else if(ch == '%' || ch == '^' || ch == ',' || ch == ';') state = 10;
+                else if(ch == '&') state = 21;
+                else if(ch == '|') state = 22;
                 break;
             case 2:
                 if(isLetter(ch) || isDigit(ch)) state = 2;
@@ -133,8 +159,8 @@ private:
                 break;
             case 3:
                 if(isDigit(ch)) state = 3;
-                if(ch == '.') state = 4;
-                if(ch == 'e') state = 6;
+                else if(ch == '.') state = 4;
+                else if(ch == 'e') state = 6;
                 else state = 0;
                 break;
             case 4:
@@ -143,6 +169,7 @@ private:
                 break;
             case 5:
                 if(isDigit(ch)) state = 5;
+                else if(ch == 'e') state = 6;
                 else state = 0;
                 break;
             case 6:
@@ -200,6 +227,7 @@ private:
             case 20:
                 if(ch == '=') state = 10;
                 else if(ch == '-') state = 10;
+                else if(ch == '>') state = 10;
                 else state = 0;
                 break;
             case 21:
@@ -233,7 +261,7 @@ private:
             {"(",30},{")",31},{"[",32},{"]",33},{"{",34},{"}",35},{"+",36},{"++",37},{"+=",38},{"-",39},
             {"--",40},{"-=",41},{"*",42},{"*=",43},{"/",44},{"/=",45},{"%",46},{"<",47},{">",48},{"=",49},
             {"<=",50},{"==",51},{">=",52},{"&",53},{"|",54},{"^",55},{"&&",56},{"||",57},{"//",58},{"/*",59},
-            {"*/",60},{",",61},{";",62},{"<<",63},{">>",64}};
+            {"*/",60},{",",61},{";",62},{"<<",63},{">>",64},{"->",65}};
 
     vector<string> sT;
     vector<string> cT;
@@ -256,5 +284,9 @@ int main() {
     for(int i = 0 ; i < tokens.size() ; i ++) {
         res_file << "<" << tokens[i].first << " ," << tokens[i].second << ">" << endl;
     }
+    Lex1.show_iT();
+    Lex1.show_cT();
+    Lex1.show_sT();
+    Lex1.show_CT();
     res_file.close();
 }
