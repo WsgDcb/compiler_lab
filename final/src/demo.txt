@@ -1,0 +1,14 @@
+int a,b,c;
+int x,y,z;
+b = 3 * 2;
+c = 2 + b;
+a = (b+c)/2;
+if((b<c)&&(a>5)){
+    x = -a;
+    if(-x>0){
+        z = 10;
+    }
+}
+else{
+    y = a-b;
+}
